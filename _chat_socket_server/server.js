@@ -66,19 +66,45 @@ io.use((socket, next) => {
 setInterval(() => {
   emitAdminDebugEvent('SERVER_HEALTH_CHECK', {
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memoryUsage: process.memoryUsage(),
-    cpuUsage: process.cpuUsage(),
-    activeUsers: Array.from(io.sockets.sockets.values()).map(socket => socket.username)
+    uptime: formatUptime(process.uptime()),
+    memoryUsage: formatMemoryUsage(process.memoryUsage()),
+    cpuUsage: formatCpuUsage(process.cpuUsage()),
+    activeUsers: Array.from(io.sockets.sockets.values())
+      .map(socket => ({ socketId: socket.id, username: socket.username }))
   })
 }, 30_000)
 
-function emitAdminDebugEvent (event, data) {
-  const adminSocket = Array.from(io.sockets.sockets.values())
-    .find(s => s.username === 'WEB_ADMIN')
-  if (adminSocket) {
-    adminSocket.emit('debug', { event, data })
+function formatUptime (seconds) {
+  const d = Math.floor(seconds / (3600 * 24))
+  const h = Math.floor(seconds % (3600 * 24) / 3600)
+  const m = Math.floor(seconds % 3600 / 60)
+  const s = Math.floor(seconds % 60)
+  return `${d}d ${h}h ${m}m ${s}s`
+}
+
+function formatMemoryUsage (memoryUsage) {
+  return {
+    rss: `${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`,
+    heapTotal: `${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+    heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`,
+    external: `${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`
   }
+}
+
+function formatCpuUsage (cpuUsage) {
+  return {
+    user: `${(cpuUsage.user / 1000000).toFixed(2)} ms`,
+    system: `${(cpuUsage.system / 1000000).toFixed(2)} ms`
+  }
+}
+
+function emitAdminDebugEvent (event, data) {
+  const adminSockets = Array.from(io.sockets.sockets.values())
+    .filter(s => s.username === 'WEB_ADMIN')
+
+  adminSockets.forEach(adminSocket => {
+    adminSocket.emit('debug', { event, data })
+  })
 }
 
 io.on('connection', (socket) => {
@@ -102,10 +128,10 @@ io.on('connection', (socket) => {
   })
 
   socket.on('EVENT_CHAT_MESSAGE', (data) => {
-    const targetSocket = Array.from(io.sockets.sockets.values())
-      .find(s => s.username === data.toUsername)
+    const targetSockets = Array.from(io.sockets.sockets.values())
+      .filter(s => s.username === data.toUsername)
 
-    if (!targetSocket) {
+    if (targetSockets.length === 0) {
       const errorMsg = `User "${data.toUsername}" is not connected.`
       console.log(errorMsg)
       socket.emit('ERROR', { message: errorMsg })
@@ -119,7 +145,10 @@ io.on('connection', (socket) => {
       fromUsername: socket.username
     }
 
-    targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
+    targetSockets.forEach(targetSocket => {
+      targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
+    })
+
     emitAdminDebugEvent('EVENT_CHAT_MESSAGE', messageData)
   })
 })
