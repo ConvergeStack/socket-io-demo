@@ -66,7 +66,7 @@
 
         socket.on('connect', () => {
             Alpine.store('socketEvents').unshift({
-                id: crypto.randomUUID(),
+                id: Math.random().toString(36).substring(2, 11),
                 wasSent: false,
                 eventName: 'connect',
                 data: JSON.stringify({ id: socket.id, auth: socket.auth }, null, 2),
@@ -76,7 +76,7 @@
 
         socket.on('connect_error', (error) => {
             Alpine.store('socketEvents').unshift({
-                id: crypto.randomUUID(),
+                id: Math.random().toString(36).substring(2, 11),
                 wasSent: false,
                 eventName: 'connect_error',
                 data: JSON.stringify(error.message, null, 2),
@@ -86,7 +86,7 @@
 
         socket.onAny((eventName, ...args) => {
             Alpine.store('socketEvents').unshift({
-                id: crypto.randomUUID(),
+                id: Math.random().toString(36).substring(2, 11),
                 wasSent: false,
                 eventName,
                 data: JSON.stringify(args, null, 2),
@@ -96,7 +96,7 @@
 
         socket.onAnyOutgoing((eventName, ...args) => {
             Alpine.store('socketEvents').unshift({
-                id: crypto.randomUUID(),
+                id: Math.random().toString(36).substring(2, 11),
                 wasSent: true,
                 eventName,
                 data: JSON.stringify(args, null, 2),

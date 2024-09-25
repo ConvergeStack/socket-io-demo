@@ -4,7 +4,6 @@ import { config } from './config.js'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { Server } from 'socket.io'
-import crypto from 'node:crypto'
 
 const app = express()
 const server = createServer(app)
@@ -116,7 +115,7 @@ io.on('connection', (socket) => {
 
     const messageData = {
       ...data,
-      id: crypto.randomUUID(),
+      id: Math.random().toString(36).substring(2, 11),
       fromUsername: socket.username
     }
 
