@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat server</title>
+</head>
+
+<body>
+    <form x-show="false" class="server-connection-form" x-data="{ username: 'WEB_ADMIN' }" @submit.prevent="serverConnectionFormSubmitted"
+        autocomplete="off" @reset.prevent="serverConnectionFormReset">
+        <label>Username</label>
+        <input type="text" name="username" x-model="username" required>
+        <button type="submit" x-init="$el.click()">Connect</button>
+        <button type="reset">Disconnect</button>
+    </form>
+
+    <form x-show="false" class="chat-form" x-data="{ toUsername: '', message: '' }" @submit.prevent="chatFormSubmitted"
+        autocomplete="off">
+        <label>To Username</label>
+        <input type="text" name="toUsername" x-model="toUsername" required>
+        <label>Message</label>
+        <textarea name="message" x-model="message" rows="4" required></textarea>
+        <button type="submit">Send message</button>
+    </form>
+
+    <div class="instructions">
+        <h2>Instructions for WEB_ADMIN</h2>
+        <p>As the WEB_ADMIN user, you have special privileges:</p>
+        <ul>
+            <li>You will receive all events broadcasted by the socket server.</li>
+            <li>This includes private messages sent between other users.</li>
+            <li>You can monitor all communication happening on the server.</li>
+            <li>Use this information responsibly for administrative purposes only.</li>
+        </ul>
+        <p>Note: The events will appear in the "Events to/from socket server" section below.</p>
+    </div>
+
+    <div class="received-messages" x-data="{}">
+        <h3>
+            Events to/from socket server
+            <button @click="$store.socketEvents = []">Clear</button>
+        </h3>
+
+        <p x-show="!$store.socketEvents.length">Events will appear here</p>
+        <ul x-show="$store.socketEvents.length" class="event-list">
+            <template x-for="(socketEvent, index) in $store.socketEvents" :key="socketEvent.id">
+                <li>
+                    <span x-text="socketEvent.wasSent ? 'Sent' : 'Received'" class="event-status"></span>
+                    <span x-text="socketEvent.timestamp" class="event-timestamp"></span>
+                    <span x-text="socketEvent.eventName" class="event-name"></span>
+                    <pre x-text="socketEvent.data" class="event-data"></pre>
+                </li>
+            </template>
+        </ul>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+
+    <script>
+        const socket = io(undefined, {
+            autoConnect: false
+        });
+
+        socket.on('connect', () => {
+            Alpine.store('socketEvents').unshift({
+                id: crypto.randomUUID(),
+                wasSent: false,
+                eventName: 'connect',
+                data: JSON.stringify({ id: socket.id, auth: socket.auth }, null, 2),
+                timestamp: new Date().toISOString(),
+            });
+        })
+
+        socket.on('connect_error', (error) => {
+            Alpine.store('socketEvents').unshift({
+                id: crypto.randomUUID(),
+                wasSent: false,
+                eventName: 'connect_error',
+                data: JSON.stringify(error.message, null, 2),
+                timestamp: new Date().toISOString(),
+            });
+        })
+
+        socket.onAny((eventName, ...args) => {
+            Alpine.store('socketEvents').unshift({
+                id: crypto.randomUUID(),
+                wasSent: false,
+                eventName,
+                data: JSON.stringify(args, null, 2),
+                timestamp: new Date().toISOString(),
+            });
+        });
+
+        socket.onAnyOutgoing((eventName, ...args) => {
+            Alpine.store('socketEvents').unshift({
+                id: crypto.randomUUID(),
+                wasSent: true,
+                eventName,
+                data: JSON.stringify(args, null, 2),
+                timestamp: new Date().toISOString(),
+            });
+        });
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('socketEvents', []);
+        });
+
+        function serverConnectionFormSubmitted(event) {
+            socket.auth = {
+                username: event.target.username.value
+            };
+            socket.connect();
+        }
+
+        function serverConnectionFormReset(event) {
+            socket.disconnect();
+        }
+
+        function chatFormSubmitted(event) {
+            socket.emit('EVENT_CHAT_MESSAGE', {
+                toUsername: event.target.toUsername.value,
+                message: event.target.message.value
+            });
+            event.target.message.value = '';
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            font-family: monospace;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .chat-form,
+        .server-connection-form {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .instructions {
+            background-color: #e6f7ff;
+            padding: 0px 15px;
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        .instructions h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        .chat-form label,
+        .server-connection-form label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .chat-form input[type="text"],
+        .server-connection-form input[type="text"] {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .chat-form textarea,
+        .server-connection-form textarea {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        .chat-form button,
+        .server-connection-form button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .chat-form button:hover,
+        .server-connection-form button:hover {
+            background-color: #218838;
+        }
+
+        .received-messages {
+            overflow-y: auto;
+            width: 100%;
+        }
+
+        .received-messages button {
+            padding: 4px;
+            background-color: #f6b554;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+            margin-right: 10px;
+        }
+
+        .event-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .event-status {
+            font-weight: bold;
+        }
+
+        .event-name {
+            color: #007bff;
+        }
+
+        .event-timestamp {
+            color: #6c757d;
+        }
+
+        .event-data {
+            background-color: #f8f9fa;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</body>
+
+</html>
