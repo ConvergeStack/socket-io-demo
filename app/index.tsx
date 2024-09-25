@@ -8,7 +8,7 @@ import TextInput from '@/components/TextInput'
 import { useSocketContext } from '@/context/socket'
 
 export default function ChatUsers (): React.ReactElement {
-  const [typedUrl, setTypedUrl] = useState('http://localhost:3000')
+  const [typedUrl, setTypedUrl] = useState('')
   const [typedUsername, setTypedUsername] = useState('')
   const { isSocketConnected, socketPayload, connectToServer } = useSocketContext()
   const [users, setUsers] = useState<Array<{ socketId: string, username: string }>>([])
@@ -70,7 +70,7 @@ export default function ChatUsers (): React.ReactElement {
         <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>Instructions:</Text>
 
         <View style={{ gap: 4 }}>
-          <Text>1. Enter the socket server address (e.g., http://localhost:3000)</Text>
+          <Text>1. Enter socket server address (e.g., http://localhost:3000). This is also the web server address with port 3000.</Text>
           <Text>2. Choose a unique username (case sensitive)</Text>
           <Text>3. Click 'Connect' to join the chat/socket server (server must be running)</Text>
           <Text>4. Active users list will appear below after connection</Text>
