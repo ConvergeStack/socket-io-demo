@@ -85,12 +85,6 @@ function emitAdminDebugEvent (event, data) {
 io.on('connection', (socket) => {
   const connectMsg = `Socket client connected with id ${socket.id}`
   console.log(connectMsg)
-  emitAdminDebugEvent('CLIENT_CONNECTED', {
-    socketId: socket.id,
-    username: socket.username,
-    connectedUsers: io.sockets.sockets.size
-  })
-
   socket.broadcast.emit('CLIENT_CONNECTED', {
     socketId: socket.id,
     username: socket.username,
@@ -100,13 +94,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', reason => {
     const disconnectMsg = `Socket client ${socket.id} disconnected - ${reason}`
     console.log(disconnectMsg)
-    emitAdminDebugEvent('CLIENT_DISCONNECTED', {
-      socketId: socket.id,
-      username: socket.username,
-      connectedUsers: io.sockets.sockets.size,
-      reason
-    })
-
     socket.broadcast.emit('CLIENT_DISCONNECTED', {
       socketId: socket.id,
       username: socket.username,

@@ -33,6 +33,10 @@ export const SocketContextProvider = ({ children }: { children: JSX.Element }): 
       username
     })
 
+    if (socketRef.current?.connected === true) {
+      socketRef.current?.disconnect()
+    }
+
     setTimeout(() => {
       socketRef?.current?.connect()
     }, 250)
@@ -69,7 +73,7 @@ export const SocketContextProvider = ({ children }: { children: JSX.Element }): 
       socketRef.current?.removeListener('disconnect')
       socketRef.current?.removeListener('connect_error')
     }
-  }, [socketPayload?.url])
+  }, [socketPayload?.url, socketPayload?.username])
 
   const contextValue: ContextType = {
     socketRef,

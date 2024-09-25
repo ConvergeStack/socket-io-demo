@@ -7,7 +7,10 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.convergestack.socket-io-demo",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash.png",
@@ -28,6 +31,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a2cc4f8b-5478-4af3-a10f-acd33496c61a"
+      }
     }
   }
 }

@@ -8,13 +8,13 @@ import TextInput from '@/components/TextInput'
 import { useSocketContext } from '@/context/socket'
 
 export default function ChatUsers (): React.ReactElement {
-  const [typedUrl, setTypedUrl] = useState('http://127.0.0.1:3000')
-  const [username, setUsername] = useState('')
+  const [typedUrl, setTypedUrl] = useState('http://localhost:3000')
+  const [typedUsername, setTypedUsername] = useState('')
   const { isSocketConnected, socketPayload, connectToServer } = useSocketContext()
   const [users, setUsers] = useState<Array<{ socketId: string, username: string }>>([])
 
-  const handleConnectServerPressed = async (): Promise<void> => {
-    connectToServer(typedUrl, username)
+  const handleConnectServerPressed = (): void => {
+    connectToServer(typedUrl, typedUsername)
   }
 
   const fetchUsers = (): void => {
@@ -22,7 +22,7 @@ export default function ChatUsers (): React.ReactElement {
 
     axios.get(`${socketPayload.url}/active-users`)
       .then((response) => {
-        setUsers(response.data.filter((user: { username: string }) => user.username !== username))
+        setUsers(response.data.filter((user: { username: string }) => user.username !== socketPayload.username))
       })
       .catch((error) => {
         alert('Error fetching active users. ' + (error.message as string))
@@ -70,7 +70,7 @@ export default function ChatUsers (): React.ReactElement {
         <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>Instructions:</Text>
 
         <View style={{ gap: 4 }}>
-          <Text>1. Enter the socket server address (e.g., http://127.0.0.1:3000)</Text>
+          <Text>1. Enter the socket server address (e.g., http://localhost:3000)</Text>
           <Text>2. Choose a unique username (case sensitive)</Text>
           <Text>3. Click 'Connect' to join the chat/socket server (server must be running)</Text>
           <Text>4. Active users list will appear below after connection</Text>
@@ -81,8 +81,8 @@ export default function ChatUsers (): React.ReactElement {
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <TextInput label='Server Address' value={typedUrl} style={{ flexGrow: 1 }} onChange={(event) => setTypedUrl(event.nativeEvent.text)} />
-        <TextInput label='Username' value={username} style={{ flexGrow: 1 }} onChange={(event) => setUsername(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
-        <Button title='Connect' onPress={() => { void handleConnectServerPressed() }} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
+        <TextInput label='Username' value={typedUsername} style={{ flexGrow: 1 }} onChange={(event) => setTypedUsername(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
+        <Button title='Connect' onPress={handleConnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
       </View>
 
       <FlatList
