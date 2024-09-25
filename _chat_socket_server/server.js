@@ -26,7 +26,18 @@ app.get('/', (req, res) => {
 })
 
 app.get('/active-users', (req, res) => {
+  emitAdminDebugEvent('ACTIVE_USERS_REQUESTED', {
+    method: req.method,
+    url: req.url,
+    headers: {
+      'user-agent': req.headers['user-agent'],
+      accept: req.headers.accept
+    },
+    ip: req.ip,
+    timestamp: new Date().toISOString()
+  })
   res.send(Array.from(io.sockets.sockets)
+    .filter(([id, socket]) => socket.username !== 'WEB_ADMIN')
     .map(([id, socket]) => ({
       socketId: id,
       username: socket.username
@@ -43,6 +54,9 @@ io.use((socket, next) => {
   //     return;
   // }
   if (!socket.handshake.auth.username) {
+    const errorMsg = 'Unauthorized: No username provided'
+    console.log(errorMsg)
+    emitAdminDebugEvent('AUTHORIZATION_FAILED', { message: errorMsg })
     next(new Error('Unauthorized'))
     return
   }
@@ -51,13 +65,32 @@ io.use((socket, next) => {
 })
 
 setInterval(() => {
-  const now = new Date().toISOString()
-  console.log('Broadcasting TIME_MESSAGE', now)
-  io.sockets.emit('TIME_MESSAGE', 'This message is sent every 30 second, it can be used to test the connection.')
+  emitAdminDebugEvent('SERVER_HEALTH_CHECK', {
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    cpuUsage: process.cpuUsage(),
+    activeUsers: Array.from(io.sockets.sockets.values()).map(socket => socket.username)
+  })
 }, 30_000)
 
+function emitAdminDebugEvent (event, data) {
+  const adminSocket = Array.from(io.sockets.sockets.values())
+    .find(s => s.username === 'WEB_ADMIN')
+  if (adminSocket) {
+    adminSocket.emit('debug', { event, data })
+  }
+}
+
 io.on('connection', (socket) => {
-  console.log(`Socket client connected with id ${socket.id}`)
+  const connectMsg = `Socket client connected with id ${socket.id}`
+  console.log(connectMsg)
+  emitAdminDebugEvent('CLIENT_CONNECTED', {
+    socketId: socket.id,
+    username: socket.username,
+    connectedUsers: io.sockets.sockets.size
+  })
+
   socket.broadcast.emit('CLIENT_CONNECTED', {
     socketId: socket.id,
     username: socket.username,
@@ -65,7 +98,15 @@ io.on('connection', (socket) => {
   })
 
   socket.on('disconnect', reason => {
-    console.log(`Socket client ${socket.id} disconnected - ${reason}`)
+    const disconnectMsg = `Socket client ${socket.id} disconnected - ${reason}`
+    console.log(disconnectMsg)
+    emitAdminDebugEvent('CLIENT_DISCONNECTED', {
+      socketId: socket.id,
+      username: socket.username,
+      connectedUsers: io.sockets.sockets.size,
+      reason
+    })
+
     socket.broadcast.emit('CLIENT_DISCONNECTED', {
       socketId: socket.id,
       username: socket.username,
@@ -79,16 +120,20 @@ io.on('connection', (socket) => {
       .find(s => s.username === data.toUsername)
 
     if (!targetSocket) {
-      socket.emit('ERROR', {
-        message: `User "${data.toUsername}" is not connected.`
-      })
+      const errorMsg = `User "${data.toUsername}" is not connected.`
+      console.log(errorMsg)
+      socket.emit('ERROR', { message: errorMsg })
+      emitAdminDebugEvent('ERROR', { message: errorMsg })
       return
     }
 
-    targetSocket.emit('EVENT_CHAT_MESSAGE', {
+    const messageData = {
       ...data,
       id: crypto.randomUUID(),
       fromUsername: socket.username
-    })
+    }
+
+    targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
+    emitAdminDebugEvent('EVENT_CHAT_MESSAGE', messageData)
   })
 })
