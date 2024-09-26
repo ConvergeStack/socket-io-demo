@@ -3,16 +3,20 @@
     "version": "0.0.1",
     "description": "A simple chat server using Socket.io",
     "type": "module",
-    "main": "server.js",
+    "main": "src/server.ts",
     "scripts": {
         "dev": "nodemon",
-        "prod": "node server.js"
+        "build": "rm -rf dist && tsc --build && tsc-alias && cp -r public dist/public"
     },
     "dependencies": {
         "express": "^4.21.0",
         "socket.io": "^4.8.0"
     },
     "devDependencies": {
-        "nodemon": "^3.1.7"
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.7.2",
+        "nodemon": "^3.1.7",
+        "tsc-alias": "^1.8.10",
+        "typescript": "^5.6.2"
     }
 }

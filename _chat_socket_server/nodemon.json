@@ -1,6 +1,7 @@
 {
-    "watch": ["server.js"],
-    "ext": "js,json",
+    "watch": ["src/**/*.ts"],
+    "ext": "ts",
     "ignore": ["node_modules/"],
-    "exec": "node server.js"
+    "exec": "npm run build && node dist/server.js",
+    "delay": "500"
   }

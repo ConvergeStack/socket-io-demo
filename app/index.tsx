@@ -80,7 +80,7 @@ export default function ChatUsers (): React.ReactElement {
       </View>
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <TextInput label='Server Address' value={typedUrl} style={{ flexGrow: 1 }} onChange={(event) => setTypedUrl(event.nativeEvent.text)} />
+        <TextInput label='Server Address' value={typedUrl} style={{ flexGrow: 1 }} onChange={(event) => setTypedUrl(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
         <TextInput label='Username' value={typedUsername} style={{ flexGrow: 1 }} onChange={(event) => setTypedUsername(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
         <Button title='Connect' onPress={handleConnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
       </View>
