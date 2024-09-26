@@ -11,7 +11,7 @@ export default function ChatUsers (): React.ReactElement {
   const [typedUrl, setTypedUrl] = useState('')
   const [typedUsername, setTypedUsername] = useState('')
   const { isSocketConnected, socketPayload, connectToServer } = useSocketContext()
-  const [users, setUsers] = useState<Array<{ socketId: string, username: string }>>([])
+  const [users, setUsers] = useState<Array<{ socketId: string, username: string, userId: string }>>([])
 
   const handleConnectServerPressed = (): void => {
     connectToServer(typedUrl, typedUsername)
@@ -29,7 +29,7 @@ export default function ChatUsers (): React.ReactElement {
       })
   }
 
-  const renderFlatListItem = ({ item }: { item: { socketId: string, username: string } }): JSX.Element => {
+  const renderFlatListItem = ({ item }: { item: { socketId: string, username: string, userId: string } }): JSX.Element => {
     return (
       <TouchableOpacity
         style={{
@@ -39,10 +39,11 @@ export default function ChatUsers (): React.ReactElement {
           marginVertical: 5
         }}
         onPress={() => {
-          router.navigate(`/chat-messages?username=${item.username}`)
+          router.navigate(`/chat-messages?userId=${item.userId}&username=${item.username}`)
         }}
       >
         <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Username: {item.username}</Text>
+        <Text style={{ fontSize: 14 }}>User ID: {item.userId}</Text>
         <Text style={{ fontSize: 14 }}>Socket ID: {item.socketId}</Text>
       </TouchableOpacity>
     )

@@ -1,9 +1,10 @@
 import { } from 'socket.io'
 import { formatUptime, formatMemoryUsage, formatCpuUsage } from '@/utils'
 import { SocketIOType } from '@/server'
+import { getUserFromDatabase, insertMessageIntoDatabase } from '@/database'
 
 export function setupSocket (io: SocketIOType): void {
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     if (!socket.handshake.auth.username) {
       const errorMsg = 'Unauthorized: No username provided'
       console.log(errorMsg)
@@ -11,7 +12,10 @@ export function setupSocket (io: SocketIOType): void {
       next(new Error('Unauthorized'))
       return
     }
-    socket.data.username = socket.handshake.auth.username
+
+    const user = await getUserFromDatabase(socket.handshake.auth.username)
+    socket.data.userId = user.id
+    socket.data.username = user.username
     next()
   })
 
@@ -48,17 +52,9 @@ export function setupSocket (io: SocketIOType): void {
     })
 
     // @ts-expect-error
-    socket.on('EVENT_CHAT_MESSAGE', (data: any) => {
+    socket.on('EVENT_CHAT_MESSAGE', async (data: any) => {
       const targetSockets = Array.from(io.sockets.sockets.values())
         .filter(s => s.data.username === data.toUsername)
-
-      if (targetSockets.length === 0) {
-        const errorMsg = `User "${data.toUsername}" is not connected.`
-        console.log(errorMsg)
-        socket.emit('ERROR', { message: errorMsg })
-        emitAdminDebugEvent(io, 'ERROR', { message: errorMsg })
-        return
-      }
 
       const messageData = {
         ...data,
@@ -66,12 +62,21 @@ export function setupSocket (io: SocketIOType): void {
         fromUsername: socket.data.username
       }
 
-      targetSockets.forEach(targetSocket => {
-        // @ts-expect-error
-        targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
-      })
+      let receiverId: string
+
+      if (targetSockets.length > 0) {
+        receiverId = targetSockets[0].data.userId
+        targetSockets.forEach(targetSocket => {
+            // @ts-expect-error
+            targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
+            })
+        } else {
+            receiverId = (await getUserFromDatabase(data.toUsername)).id
+        }
 
       emitAdminDebugEvent(io, 'EVENT_CHAT_MESSAGE', messageData)
+
+      insertMessageIntoDatabase(socket.data.userId, receiverId, messageData.message)
     })
   })
 }

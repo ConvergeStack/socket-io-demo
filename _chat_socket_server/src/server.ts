@@ -1,10 +1,11 @@
 import express from 'express'
 import { createServer } from 'node:http'
-import { config } from '@/config.js'
 import { Server } from 'socket.io'
 import { setupMiddlewares } from '@/middlewares.js'
 import { setupRoutes } from '@/routes.js'
 import { setupSocket } from '@/socket.js'
+
+const SERVER_PORT = 3000
 
 const app = express()
 const server = createServer(app)
@@ -37,6 +38,7 @@ interface InterServerEvents {
 }
 
 interface SocketData {
+  userId: string
   username: string
 }
 
@@ -49,7 +51,7 @@ SocketData
 
 const io = new Server<SocketIOType>(server, {
   cors: {
-    origin: [`http://localhost:${config.port}`, `http://127.0.0.1:${config.port}`]
+    origin: [`http://localhost:${SERVER_PORT}`, `http://127.0.0.1:${SERVER_PORT}`]
   }
 })
 
@@ -57,6 +59,6 @@ setupMiddlewares(app)
 setupRoutes(app, io)
 setupSocket(io)
 
-server.listen(config.port, () => {
-  console.log(`server running at http://localhost:${config.port}`)
+server.listen(SERVER_PORT, () => {
+  console.log(`server running at http://localhost:${SERVER_PORT}`)
 })

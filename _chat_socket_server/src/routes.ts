@@ -22,7 +22,8 @@ export function setupRoutes (app: Application, io: SocketIOType): void {
       .filter(([id, socket]) => socket.data.username !== 'WEB_ADMIN')
       .map(([id, socket]) => ({
         socketId: id,
-        username: socket.data.username
+        userId: socket.data.userId,
+        username: socket.data.username,
       })))
   })
 }

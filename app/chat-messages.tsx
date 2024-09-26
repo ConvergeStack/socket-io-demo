@@ -17,6 +17,7 @@ export default function ChatMessages (): React.ReactElement {
     console.log('Sending chat message:', router)
     socketRef?.current?.emit('EVENT_CHAT_MESSAGE', {
       toUsername: localSearchParams.username,
+      toUserId: localSearchParams.userId,
       message: messages[0].text
     })
   }, [socketRef, socketPayload])
