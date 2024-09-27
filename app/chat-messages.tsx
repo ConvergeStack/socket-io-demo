@@ -1,52 +1,61 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { GiftedChat, IMessage } from 'react-native-gifted-chat'
-import { useSocketContext } from '@/context/socket'
-import { router, useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
+
+import SocketService from '@/service/socketService'
 
 export default function ChatMessages (): React.ReactElement {
   const [messages, setMessages] = useState<IMessage[]>([])
-  const { socketRef, socketPayload, isSocketConnected } = useSocketContext()
   const localSearchParams = useLocalSearchParams()
 
-  const onSend = useCallback((messages = []) => {
-    console.log('messages', messages)
+  const onSend = (messages: IMessage[] = []): void => {
+    const socketService = SocketService.getInstance()
+
     setMessages(previousMessages =>
       GiftedChat.append(previousMessages, messages)
     )
-    console.log('Sending chat message:', router)
-    socketRef?.current?.emit('EVENT_CHAT_MESSAGE', {
-      toUsername: localSearchParams.username,
-      toUserId: localSearchParams.userId,
-      message: messages[0].text
+
+    messages.forEach(message => {
+      socketService.emit('EVENT_CHAT_MESSAGE', {
+        toUsername: localSearchParams.username,
+        toUserId: localSearchParams.userId,
+        message: message.text
+      })
     })
-  }, [socketRef, socketPayload])
+  }
 
   useEffect(() => {
-    if (!isSocketConnected) return
-
     console.log('Initializing chat message listener')
-    socketRef?.current?.on('EVENT_CHAT_MESSAGE', (data) => {
-      if (data.toUsername === socketPayload?.username) {
-        setMessages(previousMessages =>
-          GiftedChat.append(previousMessages, {
-            _id: data.id,
-            text: data.message,
-            createdAt: new Date(),
-            user: {
-              _id: 2,
-              name: data.fromUsername
-            }
-          })
-        )
+
+    const handleEventChatMessage = (data: any): void => {
+      if (data.fromUserId !== localSearchParams.userId) {
+        console.log('Chat message ignored, not related to the active chat screen.')
+        return
       }
-    })
+
+      setMessages(previousMessages =>
+        GiftedChat.append(previousMessages, {
+          // @ts-expect-error
+          _id: data.id,
+          text: data.message,
+          createdAt: new Date(),
+          user: {
+            _id: data.toUserId,
+            name: data.fromUsername
+          }
+        })
+      )
+    }
+
+    const socketService = SocketService.getInstance()
+    socketService.on('EVENT_CHAT_MESSAGE', handleEventChatMessage)
 
     return () => {
       console.log('Removing chat message listener')
-      socketRef?.current?.removeListener('EVENT_CHAT_MESSAGE')
+      socketService.removeListener('EVENT_CHAT_MESSAGE', handleEventChatMessage)
     }
-  }, [isSocketConnected])
+  }, [])
 
   return (
     <SafeAreaProvider>

@@ -4,25 +4,51 @@ import axios from 'axios'
 import { router } from 'expo-router'
 
 import Button from '@/components/Button'
+import SocketService from '@/service/socketService'
 import TextInput from '@/components/TextInput'
-import { useSocketContext } from '@/context/socket'
 
 export default function ChatUsers (): React.ReactElement {
   const [typedUrl, setTypedUrl] = useState('')
   const [typedUsername, setTypedUsername] = useState('')
-  const { isSocketConnected, socketPayload, connectToServer } = useSocketContext()
-  const [users, setUsers] = useState<Array<{ socketId: string, username: string, userId: string }>>([])
+  const [activeUsers, setActiveUsers] = useState<Array<{ socketId: string, username: string, userId: string }>>([])
+  const [isSocketConnected, setIsSocketConnected] = useState(false)
 
   const handleConnectServerPressed = (): void => {
-    connectToServer(typedUrl, typedUsername)
+    const socketService = SocketService.getInstance()
+    socketService.initialize(typedUrl, typedUsername)
+    socketService.setupCommonEventListeners()
+
+    const handleSocketConnected = (): void => {
+      setIsSocketConnected(true)
+      refetchActiveUsers()
+    }
+    socketService.on('connect', handleSocketConnected)
+
+    const handleSocketDisconnected = (): void => {
+      setIsSocketConnected(false)
+    }
+    socketService.on('disconnect', handleSocketDisconnected)
+
+    socketService.connect()
   }
 
-  const fetchUsers = (): void => {
-    if (socketPayload == null) return
+  const handleDisconnectServerPressed = (): void => {
+    const socketService = SocketService.getInstance()
+    socketService.disconnect()
+    socketService.removeAllListeners()
+    setIsSocketConnected(false)
+    setActiveUsers([])
+  }
 
-    axios.get(`${socketPayload.url}/active-users`)
+  const refetchActiveUsers = (): void => {
+    if (!isSocketConnected) {
+      console.log('Socket not connected, skipping refetch users')
+      return
+    }
+
+    axios.get(`${typedUrl}/active-users`)
       .then((response) => {
-        setUsers(response.data.filter((user: { username: string }) => user.username !== socketPayload.username))
+        setActiveUsers(response.data.filter((user: { username: string }) => user.username !== typedUsername))
       })
       .catch((error) => {
         alert('Error fetching active users. ' + (error.message as string))
@@ -60,8 +86,28 @@ export default function ChatUsers (): React.ReactElement {
   }
 
   useEffect(() => {
-    if (isSocketConnected) {
-      fetchUsers()
+    if (!isSocketConnected) return
+    console.log('Socket is now connected, refetching active users, setting up CLIENT_CONNECTED and CLIENT_DISCONNECTED listeners')
+    refetchActiveUsers()
+
+    const clientConnectedHandler = (data: any): void => {
+      console.log('New client connected', data)
+      refetchActiveUsers()
+    }
+
+    const socketService = SocketService.getInstance()
+    socketService.on('CLIENT_CONNECTED', clientConnectedHandler)
+
+    const clientDisconnectedHandler = (data: any): void => {
+      console.log('Client disconnected', data)
+      refetchActiveUsers()
+    }
+    socketService.on('CLIENT_DISCONNECTED', clientDisconnectedHandler)
+
+    return () => {
+      console.log('Cleaning up CLIENT_CONNECTED and CLIENT_DISCONNECTED listeners')
+      socketService.removeListener('CLIENT_CONNECTED', clientConnectedHandler)
+      socketService.removeListener('CLIENT_DISCONNECTED', clientDisconnectedHandler)
     }
   }, [isSocketConnected])
 
@@ -85,12 +131,13 @@ export default function ChatUsers (): React.ReactElement {
         <TextInput label='Username' value={typedUsername} style={{ flexGrow: 1 }} onChange={(event) => setTypedUsername(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
         <Button title='Connect' onPress={handleConnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
       </View>
+      <Button title='Disconnect' onPress={handleDisconnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
 
       <FlatList
-        data={users}
+        data={activeUsers}
         keyExtractor={(item) => item.socketId}
         renderItem={renderFlatListItem}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={fetchUsers} />}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refetchActiveUsers} />}
         ListEmptyComponent={renderFlatListEmptyComponent}
       />
     </View>

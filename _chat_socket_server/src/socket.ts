@@ -1,4 +1,3 @@
-import { } from 'socket.io'
 import { formatUptime, formatMemoryUsage, formatCpuUsage } from '@/utils'
 import { SocketIOType } from '@/server'
 import { getUserFromDatabase, insertMessageIntoDatabase } from '@/database'
@@ -59,7 +58,8 @@ export function setupSocket (io: SocketIOType): void {
       const messageData = {
         ...data,
         id: Math.random().toString(36).substring(2, 11),
-        fromUsername: socket.data.username
+        fromUsername: socket.data.username,
+        fromUserId: socket.data.userId
       }
 
       let receiverId: string
