@@ -10,7 +10,8 @@ export function setupMiddlewares (app: Application, io: SocketIOType): void {
       method: req.method,
       fullUrl: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
       ip: req.ip,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      headerAuthUsername: req.headers['auth-username']
     })
 
     next()

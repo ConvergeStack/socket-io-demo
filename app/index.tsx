@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { View, StatusBar, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native'
-import axios from 'axios'
 import { router } from 'expo-router'
 
 import Button from '@/components/Button'
+import apiClient from '@/service/apiClient'
 import SocketService from '@/service/socketService'
 import TextInput from '@/components/TextInput'
 
 export default function ChatUsers (): React.ReactElement {
-  const [typedUrl, setTypedUrl] = useState('')
-  const [typedUsername, setTypedUsername] = useState('')
+  const [typedUrl, setTypedUrl] = useState('http://192.168.1.82:3000')
+  const [typedUsername, setTypedUsername] = useState('a')
   const [activeUsers, setActiveUsers] = useState<Array<{ socketId: string, username: string, userId: string }>>([])
   const [isSocketConnected, setIsSocketConnected] = useState(false)
 
@@ -46,7 +46,7 @@ export default function ChatUsers (): React.ReactElement {
       return
     }
 
-    axios.get(`${typedUrl}/active-users`)
+    apiClient.get(`/active-users`)
       .then((response) => {
         setActiveUsers(response.data.filter((user: { username: string }) => user.username !== typedUsername))
       })
@@ -65,7 +65,7 @@ export default function ChatUsers (): React.ReactElement {
           marginVertical: 5
         }}
         onPress={() => {
-          router.navigate(`/chat-messages?userId=${item.userId}&username=${item.username}`)
+          router.navigate(`/chat-messages?chatWithUserId=${item.userId}&chatWithUsername=${item.username}`)
         }}
       >
         <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Username: {item.username}</Text>
@@ -88,6 +88,8 @@ export default function ChatUsers (): React.ReactElement {
   useEffect(() => {
     if (!isSocketConnected) return
     console.log('Socket is now connected, refetching active users, setting up CLIENT_CONNECTED and CLIENT_DISCONNECTED listeners')
+    apiClient.defaults.baseURL = typedUrl
+    apiClient.defaults.headers.common['auth-username'] = typedUsername
     refetchActiveUsers()
 
     const clientConnectedHandler = (data: any): void => {

@@ -1,5 +1,6 @@
 import { Application, Request, Response } from 'express'
 import { SocketIOType } from '@/server'
+import { getMessagesFromDatabase, getUserFromDatabase } from '@/database'
 
 export function setupRoutes (app: Application, io: SocketIOType): void {
   app.get('/', (req: Request, res: Response) => {
@@ -16,7 +17,14 @@ export function setupRoutes (app: Application, io: SocketIOType): void {
       })))
   })
 
-  app.get('/chat-messages', (req: Request, res: Response) => {
-    // TODO
+  app.get('/chat-messages', async (req: Request, res: Response) => {
+    const authUser = await getUserFromDatabase(req.headers['auth-username'] as string)
+    const messages = await getMessagesFromDatabase(authUser?.id as string, req.query.chatWithUserId as string, req.query.cursor as string | null, Number(req.query.limit))
+    res.send(messages)
+  })
+
+  app.get('/whoami', async (req: Request, res: Response) => {
+    const authUser = await getUserFromDatabase(req.headers['auth-username'] as string)
+    res.send(authUser)
   })
 }

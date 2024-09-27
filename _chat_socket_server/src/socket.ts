@@ -1,6 +1,7 @@
+import { ulid } from 'ulid'
 import { formatUptime, formatMemoryUsage, formatCpuUsage } from '@/utils'
 import { SocketIOType } from '@/server'
-import { getUserFromDatabase, insertMessageIntoDatabase } from '@/database'
+import { createUserInDatabase, getUserFromDatabase, insertMessageIntoDatabase } from '@/database'
 
 export function setupSocket (io: SocketIOType): void {
   io.use(async (socket, next) => {
@@ -12,7 +13,10 @@ export function setupSocket (io: SocketIOType): void {
       return
     }
 
-    const user = await getUserFromDatabase(socket.handshake.auth.username)
+    let user = await getUserFromDatabase(socket.handshake.auth.username)
+    if (!user) {
+      user = await createUserInDatabase(socket.handshake.auth.username)
+    }
     socket.data.userId = user.id
     socket.data.username = user.username
     next()
@@ -57,7 +61,7 @@ export function setupSocket (io: SocketIOType): void {
 
       const messageData = {
         ...data,
-        id: Math.random().toString(36).substring(2, 11),
+        id: ulid(),
         fromUsername: socket.data.username,
         fromUserId: socket.data.userId
       }
@@ -71,12 +75,12 @@ export function setupSocket (io: SocketIOType): void {
             targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
             })
         } else {
-            receiverId = (await getUserFromDatabase(data.toUsername)).id
+            receiverId = (await getUserFromDatabase(data.toUsername))!.id
         }
 
       emitAdminDebugEvent(io, 'EVENT_CHAT_MESSAGE', messageData)
 
-      insertMessageIntoDatabase(socket.data.userId, receiverId, messageData.message)
+      insertMessageIntoDatabase(messageData.id, socket.data.userId, receiverId, messageData.message)
     })
   })
 }
