@@ -3,7 +3,7 @@ import { formatUptime, formatMemoryUsage, formatCpuUsage } from '@/utils'
 import { SocketIOType } from '@/server'
 import { createUserInDatabase, getUserFromDatabase, insertMessageIntoDatabase } from '@/database'
 
-export function setupSocket (io: SocketIOType): void {
+export function setupSocket(io: SocketIOType): void {
   io.use(async (socket, next) => {
     if (!socket.handshake.auth.username) {
       const errorMsg = 'Unauthorized: No username provided'
@@ -18,7 +18,6 @@ export function setupSocket (io: SocketIOType): void {
       user = await createUserInDatabase(socket.handshake.auth.username)
     }
     socket.data.userId = user.id
-    socket.data.username = user.username
     next()
   })
 
@@ -29,7 +28,7 @@ export function setupSocket (io: SocketIOType): void {
       memoryUsage: formatMemoryUsage(process.memoryUsage()),
       cpuUsage: formatCpuUsage(process.cpuUsage()),
       activeUsers: Array.from(io.sockets.sockets.values())
-        .map(socket => ({ socketId: socket.id, username: socket.data.username }))
+        .map(socket => ({ socketId: socket.id, username: socket.data.userId }))
     })
   }, 30_000)
 
@@ -39,7 +38,7 @@ export function setupSocket (io: SocketIOType): void {
 
     socket.broadcast.emit('CLIENT_CONNECTED', {
       socketId: socket.id,
-      username: socket.data.username,
+      userId: socket.data.userId,
       connectedUsers: io.sockets.sockets.size
     })
 
@@ -48,48 +47,45 @@ export function setupSocket (io: SocketIOType): void {
       console.log(disconnectMsg)
       socket.broadcast.emit('CLIENT_DISCONNECTED', {
         socketId: socket.id,
-        username: socket.data.username,
+        userId: socket.data.userId,
         connectedUsers: io.sockets.sockets.size,
         reason
       })
     })
 
     // @ts-expect-error
-    socket.on('EVENT_CHAT_MESSAGE', async (data: any) => {
-      const targetSockets = Array.from(io.sockets.sockets.values())
-        .filter(s => s.data.username === data.toUsername)
+    socket.on('EVENT_CHAT_MESSAGE', async ({ toUserId, message }) => {
+      const toUserSockets = Array.from(io.sockets.sockets.values())
+        .filter(s => s.data.userId === toUserId)
 
       const messageData = {
-        ...data,
         id: ulid(),
-        fromUsername: socket.data.username,
-        fromUserId: socket.data.userId
+        fromUserId: socket.data.userId,
+        toUserId,
+        message
       }
 
-      let receiverId: string
-
-      if (targetSockets.length > 0) {
-        receiverId = targetSockets[0].data.userId
-        targetSockets.forEach(targetSocket => {
-            // @ts-expect-error
-            targetSocket.emit('EVENT_CHAT_MESSAGE', messageData)
-            })
-        } else {
-            receiverId = (await getUserFromDatabase(data.toUsername))!.id
-        }
+      toUserSockets.forEach(toUserSocket => {
+        // @ts-expect-error
+        toUserSocket.emit('EVENT_CHAT_MESSAGE', messageData)
+      })
 
       emitAdminDebugEvent(io, 'EVENT_CHAT_MESSAGE', messageData)
-
-      insertMessageIntoDatabase(messageData.id, socket.data.userId, receiverId, messageData.message)
+      insertMessageIntoDatabase(messageData.id, socket.data.userId, toUserId, messageData.message)
     })
   })
 }
 
-export function emitAdminDebugEvent (io: SocketIOType, event: string, data: any): void {
-  const adminSockets = Array.from(io.sockets.sockets.values())
-    .filter(s => s.data.username === 'WEB_ADMIN')
+export function emitAdminDebugEvent(io: SocketIOType, event: string, data: any): void {
+  getUserFromDatabase('WEB_ADMIN')
+    .then((adminUser) => {
+      if (adminUser == null) return
 
-  adminSockets.forEach(adminSocket => {
-    adminSocket.emit('DEBUG', { event, data })
-  })
+      const adminSockets = Array.from(io.sockets.sockets.values())
+        .filter(s => s.data.userId === adminUser?.id)
+
+      adminSockets.forEach(adminSocket => {
+        adminSocket.emit('DEBUG', { event, data })
+      })
+    })
 }

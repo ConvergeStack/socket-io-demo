@@ -14,6 +14,18 @@ export const getUserFromDatabase = async (username: string) => {
     return user;
 };
 
+export const getUsersFromDatabase = async (userIds: string[]) => {
+    const users = await prisma.user.findMany({
+        where: {
+            id: {
+                in: userIds
+            }
+        },
+    });
+
+    return users;
+};
+
 export const createUserInDatabase = async (username: string) => {
     const newUser = await prisma.user.create({
         data: {

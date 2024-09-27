@@ -7,11 +7,12 @@ import apiClient from '@/service/apiClient'
 import SocketService from '@/service/socketService'
 import TextInput from '@/components/TextInput'
 
-export default function ChatUsers (): React.ReactElement {
-  const [typedUrl, setTypedUrl] = useState('http://192.168.1.82:3000')
-  const [typedUsername, setTypedUsername] = useState('a')
-  const [activeUsers, setActiveUsers] = useState<Array<{ socketId: string, username: string, userId: string }>>([])
+export default function ChatUsers(): React.ReactElement {
+  const [typedUrl, setTypedUrl] = useState('http://192.168.1.15:3000')
+  const [typedUsername, setTypedUsername] = useState('')
+  const [activeUsers, setActiveUsers] = useState<Array<{ id: string, username: string }>>([])
   const [isSocketConnected, setIsSocketConnected] = useState(false)
+  const [authUser, setAuthUser] = useState<any>()
 
   const handleConnectServerPressed = (): void => {
     const socketService = SocketService.getInstance()
@@ -55,7 +56,14 @@ export default function ChatUsers (): React.ReactElement {
       })
   }
 
-  const renderFlatListItem = ({ item }: { item: { socketId: string, username: string, userId: string } }): JSX.Element => {
+  const refetchAuthUser = (): void => {
+    apiClient.get('/whoami')
+      .then((response) => {
+        setAuthUser(response.data)
+      })
+  }
+
+  const renderFlatListItem = ({ item }: { item: { id: string, username: string } }): JSX.Element => {
     return (
       <TouchableOpacity
         style={{
@@ -65,12 +73,11 @@ export default function ChatUsers (): React.ReactElement {
           marginVertical: 5
         }}
         onPress={() => {
-          router.navigate(`/chat-messages?chatWithUserId=${item.userId}&chatWithUsername=${item.username}`)
+          router.navigate(`/chat-messages?authId=${authUser.id}&authUsername=${authUser.username}&chatWithUserId=${item.id}&chatWithUsername=${item.username}`)
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Username: {item.username}</Text>
-        <Text style={{ fontSize: 14 }}>User ID: {item.userId}</Text>
-        <Text style={{ fontSize: 14 }}>Socket ID: {item.socketId}</Text>
+        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>username: {item.username}</Text>
+        <Text style={{ fontSize: 14 }}>ID: {item.id}</Text>
       </TouchableOpacity>
     )
   }
@@ -91,6 +98,7 @@ export default function ChatUsers (): React.ReactElement {
     apiClient.defaults.baseURL = typedUrl
     apiClient.defaults.headers.common['auth-username'] = typedUsername
     refetchActiveUsers()
+    refetchAuthUser()
 
     const clientConnectedHandler = (data: any): void => {
       console.log('New client connected', data)
@@ -128,16 +136,19 @@ export default function ChatUsers (): React.ReactElement {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <TextInput label='Server Address' value={typedUrl} style={{ flexGrow: 1 }} onChange={(event) => setTypedUrl(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
-        <TextInput label='Username' value={typedUsername} style={{ flexGrow: 1 }} onChange={(event) => setTypedUsername(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
-        <Button title='Connect' onPress={handleConnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
-      </View>
-      <Button title='Disconnect' onPress={handleDisconnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
+      {isSocketConnected ? (
+        <Button title='Disconnect' onPress={handleDisconnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
+      ) : (
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TextInput label='Server Address' value={typedUrl} style={{ flexGrow: 1 }} onChange={(event) => setTypedUrl(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
+          <TextInput label='Username' value={typedUsername} style={{ flexGrow: 1 }} onChange={(event) => setTypedUsername(event.nativeEvent.text)} autoCapitalize='none' autoCorrect={false} />
+          <Button title='Connect' onPress={handleConnectServerPressed} contentContainerStyle={{ alignSelf: 'center', marginTop: 16 }} />
+        </View>
+      )}
 
       <FlatList
         data={activeUsers}
-        keyExtractor={(item) => item.socketId}
+        keyExtractor={(item) => item.id}
         renderItem={renderFlatListItem}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refetchActiveUsers} />}
         ListEmptyComponent={renderFlatListEmptyComponent}

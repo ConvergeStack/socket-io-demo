@@ -14,12 +14,21 @@ This is a simple demo of Socket.io using Expo SDK 51 and Expo Router.
    npm install
    ```
 
-3. Start the development server:
+3. Have a Postgres database running with a database called `socket-io-demo`
+
+4. Update the database connection details in `.env`
+
+5. Start the development server:
    ```bash
    npm run dev
    ```
 
-4. Browse to http://localhost:3000 to access the chat app admin panel.
+6. Run Prisma Migrate to create the database schema:
+   ```bash
+   npx prisma migrate dev
+   ```
+
+7. Browse to http://localhost:3000 to access the chat app admin panel.
 
 ## Getting Started With Expo
 

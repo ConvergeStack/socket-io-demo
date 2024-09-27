@@ -18,12 +18,12 @@ interface ServerToClientEvents {
   ERROR: (data: unknown) => void
   CLIENT_CONNECTED: (data: {
     socketId: string
-    username: string
+    userId: string
     connectedUsers: number
   }) => void
   CLIENT_DISCONNECTED: (data: {
     socketId: string
-    username: string
+    userId: string
     connectedUsers: number
     reason: string
   }) => void
@@ -39,7 +39,6 @@ interface InterServerEvents {
 
 interface SocketData {
   userId: string
-  username: string
 }
 
 export type SocketIOType = Server<
