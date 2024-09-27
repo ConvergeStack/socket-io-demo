@@ -55,7 +55,7 @@ const io = new Server<SocketIOType>(server, {
   }
 })
 
-setupMiddlewares(app)
+setupMiddlewares(app, io)
 setupRoutes(app, io)
 setupSocket(io)
 
