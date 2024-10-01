@@ -4,9 +4,9 @@ This is a simple demo of Socket.io using Expo SDK 51 and Expo Router.
 
 ## Getting Started With Socket.io
 
-1. Navigate to the `_chat_socket_io` directory:
+1. Navigate to the `_chat_socket_server` directory:
    ```bash
-   cd _chat_socket_io
+   cd _chat_socket_server
    ```
 
 2. Install dependencies:
